@@ -11,9 +11,8 @@ module.exports = {
     clean: true,
   },
   devServer: {
-    static: {
-      directory: path.join(__dirname, 'src/examples'),
-    },
-    hot: true,
+    contentBase: './src/examples',
+    publicPath: '/dist',
+    watchContentBase: true,
   },
 };

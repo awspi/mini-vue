@@ -11,6 +11,25 @@ export const isArray = (target) => {
   return Array.isArray(target)
 }
 /**
+ * 判断是否是String类型
+ */
+export const isString = (target) => {
+  return typeof target === 'string'
+}
+/**
+ * 判断是否是Number类型
+ */
+export const isNumber = (target) => {
+  return typeof target === 'number'
+}
+/**
+ * 判断是否是Boolean类型
+ */
+export const isBoolean = (target) => {
+  return typeof target === 'boolean'
+}
+
+/**
  * 值是否发生改变 
  * (注意NaN!==NaN)
  */
