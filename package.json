@@ -1,0 +1,27 @@
+{
+  "name": "mini-vue",
+  "version": "1.0.0",
+  "description": "mini implementation of vue",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "webpack",
+    "dev": "webpack serve --open",
+    "format": "prettier --write ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/awspi/mini-vue.git"
+  },
+  "author": "pithy",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/awspi/mini-vue/issues"
+  },
+  "homepage": "https://github.com/awspi/mini-vue#readme",
+  "devDependencies": {
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.10.0"
+  }
+}

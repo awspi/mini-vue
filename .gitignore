@@ -1,0 +1,6 @@
+node_modules/
+src/assets/
+*.log
+coverage/
+*.snap
+dist/
