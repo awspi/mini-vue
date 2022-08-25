@@ -73,17 +73,17 @@ const processText = (n1, n2, container, anchor) => {
 /**
  * mountTextNode
  * @param {*} vnode 
- * @param {*} containder 
+ * @param {*} container 
  */
-const mountTextNode = (vnode, containder, anchor) => {
+const mountTextNode = (vnode, container, anchor) => {
   const textNode = document.createTextNode(vnode.children)
-  ////containder.appendChild(textNode)
-  containder.insertBefore(textNode, anchor)
+  ////container.appendChild(textNode)
+  container.insertBefore(textNode, anchor)
   vnode.el = textNode
 }
 
 const processFragment = (n1, n2, container, anchor) => {
-  //todo 复习下
+
   const fragmentStartAnchor = (n2.el = n1
     ? n1.el
     : document.createTextNode(''))
@@ -127,9 +127,9 @@ const patchElement = (n1, n2) => {
  * patchChildren
  * @param {*} n1 
  * @param {*} n2 
- * @param {*} containder 
+ * @param {*} container 
  */
-const patchChildren = (n1, n2, containder, anchor) => {
+const patchChildren = (n1, n2, container, anchor) => {
   const { shapeFlag: prevShapeFlag, children: c1 } = n1
   const { shapeFlag, children: c2 } = n2
   if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
@@ -139,48 +139,207 @@ const patchChildren = (n1, n2, containder, anchor) => {
       unmountChildren(c1)
     }
     if (c1 !== c2) {
-      containder.textContent = c2.textContent
+      container.textContent = c2.textContent
     }
   } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     //* n2:ARRAY
     if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
       //*n1:TEXT 删除n1,mount n2 (mountChildren)
-      containder.textContent = ''
-      mountChildren(c2, containder, anchor)
+      container.textContent = ''
+      mountChildren(c2, container, anchor)
     } else if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       //*n1:ARRAY patchArrayChildren
-      patchArrayChildren(c1, c2, containder, anchor)
+      //只要第一个元素有key,就当作都有key
+      if (c1[0] && c1[0].key != null && c2[0] && c2[0].key != null) {
+        patchKeyedChildren(c1, c2, container, anchor)
+      } else {
+        patchUnkeyedChildren(c1, c2, container, anchor)
+      }
     } else {
       //*n1:NULL mount n2 (mountChildren)
-      mountChildren(c2, containder, anchor)
+      mountChildren(c2, container, anchor)
     }
   } else {
     //* n2:null
     if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
       //*n1:TEXT 删除n1
-      containder.textContent = ''
+      container.textContent = ''
     } else if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       //*n1:ARRAY 删除n1(unmountChildren)
-      unmountChildren(c2, containder)
+      unmountChildren(c2, container)
     } else {
       //*n1:NULL 不做处理
     }
   }
 }
 /**
- * patchArrayChildren
+ * patchKeyedChildren
+ * O(n)
+ * @param {*} c1 prev
+ * @param {*} c2 next
+ * @param {*} container 
+ * @param {*} anchor 
+ */
+const patchKeyedChildren = (c1, c2, container, anchor) => {
+  const map = new Map()//*用 map 优化
+  c1.forEach((prev, j) => {
+    map.set(prev.key, { prev, j })
+  })
+  //*记录当前的 next 在 c1 中找到的 index 的最大值。
+  let maxNewIndexSoFar = 0
+  for (let i = 0; i < c2.length; i++) {
+    const next = c2[i]
+    //首个 const curAnchor = c1[0].el 首个
+    //非首个 const curAnchor = c2[i - 1].el.nextSibling
+    const curAnchor = i === 0 ? c1[0].el : c2[i - 1].el.nextSibling
+    if (map.has(next.key)) {
+      const { prev, j } = map.get(next.key)
+      //*find
+      patch(prev, next, container, anchor)
+      if (j < maxNewIndexSoFar) {
+        //*需要移动
+        container.insertBefore(next.el, curAnchor)
+      } else {
+        maxNewIndexSoFar = j
+      }
+      map.delete(next.key) //匹配出后就删除
+    } else {
+      //* 未找到 插入操作
+      patch(null, next, container, curAnchor)
+    }
+  }
+  //匹配结束后剩下的卸载
+  map.forEach(prev => {
+    unmount(prev)
+  })
+}
+
+const patchKeyedChildrenDiff = (c1, c2, container, anchor) => {
+  let i = 0
+  let e1 = c1.length - 1//下标
+  let e2 = c2.length - 1
+  //* 1.从左至右依次比对
+  while (i <= e1 && i <= e2 && c1[i].key === c2[i].key) {
+    patch(c1[i], c2[i], container, anchor)
+    i++
+  }
+  //* 2.从右至左依次比对
+  while (i <= e1 && i <= e2 && c1[e1].key === c2[e2].key) {
+    patch(c1[e1], c2[e2], container, anchor)
+    e1--
+    e2--
+  }
+  /*
+   c1:a b c
+   c2 a d b c
+   i=1
+   e1=2 ->1 ->0
+   e2=3 ->2 ->1 
+  */
+  //* 3.1 经过 1、2 直接将旧结点比对完，此时 i > e1,则剩下的新结点直接 mount
+  if (i > e1) {
+    for (let j = i; j <= e2; j++) {
+      const nextPos = e2 + 1
+      const curAnchor = c2[nextPos] && c2[nextPos].el || anchor//防止e2=2.length - 1
+      patch(null, c2[j], container, curAnchor)
+    }
+  } else if (i > e2) {
+    //* 3.2 经过 1、2 直接将新结点比对完，，此时 i > e2,则剩下的旧结点直接unmount
+    for (let j = i; j <= e1; j++) {
+      unmount(c1[j])
+    }
+  } else {
+    //*  4.采用传统 diff算法，但不真的添加和移动，只做 标记和删除
+    const map = new Map()//*用 map 优化
+    c1.forEach((prev, j) => {
+      map.set(prev.key, { prev, j })
+    })
+    let maxNewIndexSoFar = 0//*记录当前的 next 在 c1 中找到的 index 的最大值。
+    let move = false //是否需要移动
+    const toMounted = [] //记录待新增的元素的下标
+
+    const source = new Array(e2 - i + 1).fill(-1)//source数组 记录c2元素在c1下标
+    for (let k = 0; k < c2.length; k++) {
+      const next = c2[k]
+      if (map.has(next.key)) {
+        //*find
+        const { prev, j } = map.get(next.key)
+        patch(prev, next, container, anchor)
+        if (j < maxNewIndexSoFar) {
+          //*需要移动
+          move = true
+        } else {
+          maxNewIndexSoFar = j
+        }
+        source[k] = j //* 填入下标
+        map.delete(next.key) //匹配出后就删除
+      } else {
+        //* 未找到 插入操作
+        // patch(null, next, container, curAnchor)
+        //* toMounted处理' 不需要移动，但还有未添加的元素' 的情况
+        toMounted.push(k + i)//新添加的元素下标
+      }
+    }
+    //匹配结束后剩下的卸载
+    map.forEach(prev => {
+      unmount(prev)
+    })
+    //
+    if (move) {
+      //* 5.需要移动，则采用新的最长上升子序列算法
+      const seq = getSequence(source)
+      let j = seq[seq.length - 1]
+      for (let k = source.length - 1; k >= 0; k--) {
+        if (seq[j] === k) {
+          //不用移动
+          j--
+        } else {
+          const pos = k + i
+          const nextPos = pos + 1
+          const curAnchor = c2[nextPos] && c2[nextPos].el || anchor//防止e2=2.length - 1
+
+          if (source[k] === -1) {
+            //新节点->mount
+            patch(null, c2[pos], container, curAnchor)
+          } else {
+            //移动
+            container.insertBefore(c2[pos].el, curAnchor)
+          }
+        }
+      }
+    } else if (toMounted.length) {
+      //* 6.特殊情况：不需要移动，但还有未添加的元素
+      for (let k = toMounted.length - 1; k >= 0; k--) {
+        const pos = toMounted[k]
+        const nextPos = pos + 1
+        const curAnchor = c2[nextPos] && c2[nextPos].el || anchor//防止e2=2.length - 1
+        patch(null, c2[pos], container, curAnchor)
+      }
+    }
+  }
+}
+/**
+ * 最长上升子序列
+ * @param {*} source 
+ */
+const getSequence = (source) => {
+
+}
+
+/**
+ * patchUnkeyedChildren
  * @param {*} c1 
  * @param {*} c2 
- * @param {*} containder 
+ * @param {*} container 
  */
-const patchArrayChildren = (c1, c2, containder, anchor) => {
+const patchUnkeyedChildren = (c1, c2, container, anchor) => {
   /*
   > c1: a b c
   > c2: d e f
-
+ 
   > c1: a b c
   > c2: d e f g h
-
+ 
   > c1: a b c g h
   > c2: d e f
   */
@@ -188,12 +347,12 @@ const patchArrayChildren = (c1, c2, containder, anchor) => {
   const newLen = c2.length
   const commonLen = Math.min(oldLen, newLen)
   for (let i = 0; i < commonLen; i++) {
-    patch(c1[i], c2[i], containder, anchor)
+    patch(c1[i], c2[i], container, anchor)
   }
   if (oldLen > newLen) {
     unmountChildren(c1.slice(commonLen))
   } else if (oldLen < newLen) {
-    mountChildren(c2.slice(commonLen), containder, anchor)
+    mountChildren(c2.slice(commonLen), container, anchor)
   }
 }
 /**
@@ -209,9 +368,9 @@ const unmountChildren = (children) => {
  * mountElement
  * 挂载普通元素
  * @param {*} vnode 
- * @param {*} containder 
+ * @param {*} container 
  */
-const mountElement = (vnode, containder, anchor) => {
+const mountElement = (vnode, container, anchor) => {
   const { type, props, shapeFlag, children } = vnode
   const el = document.createElement(type)
   //TEXT_CHILDREN
@@ -226,18 +385,18 @@ const mountElement = (vnode, containder, anchor) => {
   if (props) {
     patchProps(null, props, el)//复用patchProps
   }
-  // // containder.appendChild(el)
-  containder.insertBefore(el, anchor)
+  // // container.appendChild(el)
+  container.insertBefore(el, anchor)
   vnode.el = el
 }
 /**
  * mountChildren
  * @param {Array} children 
- * @param {*} containder 
+ * @param {*} container 
  */
-const mountChildren = (children, containder, anchor) => {
+const mountChildren = (children, container, anchor) => {
   children.forEach(child => {
-    patch(null, child, containder, anchor) // 递归
+    patch(null, child, container, anchor) // 递归
   })
 }
 
