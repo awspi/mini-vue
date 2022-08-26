@@ -9,6 +9,7 @@ export const patchProps = (oldProps, newProps, el) => {
   oldProps = oldProps || {}//兼容处理
   newProps = newProps || {}//兼容处理
   for (const key in newProps) {
+    if (key === 'key') continue//!略过key
     const next = newProps[key]
     const prev = oldProps[key]
     if (prev !== next) {
@@ -16,7 +17,7 @@ export const patchProps = (oldProps, newProps, el) => {
     }
     //移除oldProps中 newProps没有的部分
     for (const key in oldProps) {
-      if (newProps[key] === null) {
+      if (key !== 'key' && newProps[key] === null) {//!略过key
         patchDomProp(oldProps[key], null, key, el)
       }
     }

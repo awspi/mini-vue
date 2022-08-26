@@ -181,40 +181,6 @@ const patchChildren = (n1, n2, container, anchor) => {
  * @param {*} anchor 
  */
 const patchKeyedChildren = (c1, c2, container, anchor) => {
-  const map = new Map()//*用 map 优化
-  c1.forEach((prev, j) => {
-    map.set(prev.key, { prev, j })
-  })
-  //*记录当前的 next 在 c1 中找到的 index 的最大值。
-  let maxNewIndexSoFar = 0
-  for (let i = 0; i < c2.length; i++) {
-    const next = c2[i]
-    //首个 const curAnchor = c1[0].el 首个
-    //非首个 const curAnchor = c2[i - 1].el.nextSibling
-    const curAnchor = i === 0 ? c1[0].el : c2[i - 1].el.nextSibling
-    if (map.has(next.key)) {
-      const { prev, j } = map.get(next.key)
-      //*find
-      patch(prev, next, container, anchor)
-      if (j < maxNewIndexSoFar) {
-        //*需要移动
-        container.insertBefore(next.el, curAnchor)
-      } else {
-        maxNewIndexSoFar = j
-      }
-      map.delete(next.key) //匹配出后就删除
-    } else {
-      //* 未找到 插入操作
-      patch(null, next, container, curAnchor)
-    }
-  }
-  //匹配结束后剩下的卸载
-  map.forEach(prev => {
-    unmount(prev)
-  })
-}
-
-const patchKeyedChildrenDiff = (c1, c2, container, anchor) => {
   let i = 0
   let e1 = c1.length - 1//下标
   let e2 = c2.length - 1
@@ -251,16 +217,19 @@ const patchKeyedChildrenDiff = (c1, c2, container, anchor) => {
   } else {
     //*  4.采用传统 diff算法，但不真的添加和移动，只做 标记和删除
     const map = new Map()//*用 map 优化
-    c1.forEach((prev, j) => {
+    //* c1的前后可能被截断
+    for (let j = i; j <= e1; j++) {
+      const prev = c2[k + i]
       map.set(prev.key, { prev, j })
-    })
+    }
+
     let maxNewIndexSoFar = 0//*记录当前的 next 在 c1 中找到的 index 的最大值。
     let move = false //是否需要移动
     const toMounted = [] //记录待新增的元素的下标
 
     const source = new Array(e2 - i + 1).fill(-1)//source数组 记录c2元素在c1下标
-    for (let k = 0; k < c2.length; k++) {
-      const next = c2[k]
+    for (let k = 0; k < source.length; k++) {
+      const next = c2[k + i]
       if (map.has(next.key)) {
         //*find
         const { prev, j } = map.get(next.key)
@@ -318,12 +287,51 @@ const patchKeyedChildrenDiff = (c1, c2, container, anchor) => {
     }
   }
 }
+
 /**
  * 最长上升子序列
- * @param {*} source 
+ *  贪婪+二分
+ * @param {*} nums 
+ * @returns 
  */
-const getSequence = (source) => {
-
+const getSequence = (nums) => {
+  const arr = [nums[0]]
+  const postion = [0]//nums加入arr时的位置
+  //3 2 4 1  
+  for (let i = 0; i < nums.length; i++) {
+    if (nums[i] === -1) continue //! source中初始值为-1,此时不参与最长上升子序列的计算
+    if (nums[i] > arr[arr.length - 1]) {
+      arr.push(nums[i])
+      postion.push(arr.length - 1)
+    } else {
+      //* 二分查找  arr[l]>=nums[i]
+      let l = 0
+      let r = arr.length
+      while (l <= r) {
+        let mid = ~~((l + r) / 2)//* 使用 ~~ 去掉一个数的小数部分
+        //* 这个方法与Math.floor()不同，它只是单纯的去掉小数部分，无论正负都不会改变整数部分。
+        if (nums[i] > arr[mid]) {
+          l = mid + 1
+        } else if (nums[i] < arr[mid]) {
+          r = mid - 1
+        } else {
+          //相等
+          l = mid
+          break
+        }
+      }
+      arr[l] = nums[i]
+      postion.push(l)
+    }
+  }
+  // *返回子序列 复用arr (arr已经没用了)
+  let cur = arr.length - 1
+  for (let i = postion.length - 1; i >= 0 && cur >= 0; i--) {
+    if (postion[i] === cur) {
+      arr[cur--] = i
+    }
+  }
+  return arr
 }
 
 /**
