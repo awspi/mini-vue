@@ -1,4 +1,4 @@
-import { isArray, isNumber, isString } from "../utils"
+import { isArray, isNumber, isObject, isString } from "../utils"
 
 //ShapeFlags枚举
 export const ShapeFlags = {
@@ -49,6 +49,24 @@ export const h = (type, props, children) => {
     shapeFlag,
     el: null,
     anchor: null,
-    key: props && props.key
+    key: props && props.key,
+    component: null,//专门用于保存组件的实例
   }
+}
+/**
+ * vnode辅助函数
+ * 可以直接返回数字 字符串 数组
+ * normalizeVnode
+ * @param {*} result 
+ * @returns 
+ */
+export const normalizeVNode = (result) => {
+  if (isArray(result)) {
+    return h(Fragment, null, result)
+  }
+  if (isObject(result)) {
+    return result
+  }
+  //字符串 or 数组
+  return h(Text, null, result.toString())
 }

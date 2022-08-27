@@ -1,5 +1,6 @@
 import { ShapeFlags } from "./vnode"
 import { patchProps } from "./patchProps"
+import { mountComponent } from "./component"
 export const render = (vnode, container) => {
   const prevVNode = container._vnode
   if (!vnode) {
@@ -48,10 +49,32 @@ const unmountFragment = (vnode) => {
  */
 const unmountComponent = (vnode) => {
   //todo
+  unmount(vnode.component.subTree)
 }
 
 const processComponent = (n1, n2, container, anchor) => {
   //todo
+  if (!n1) {
+    //n1不存在
+    mountComponent(n2, container, anchor, patch)
+  } else {
+    //n1存在-> shouldComponentUpdate ->updateComponent
+    //todo shouldComponentUpdate
+    updateComponent(n1, n2)
+  }
+}
+
+
+
+/**
+ * updateComponent
+ * @param {*} n1 
+ * @param {*} n2 
+ */
+const updateComponent = (n1, n2) => {
+  n2.component = n1.component//继承
+  n2.component.next = n2
+  n2.component.update()
 }
 
 /**
@@ -98,6 +121,7 @@ const processFragment = (n1, n2, container, anchor) => {
     container.insertBefore(fragmentEndAnchor, anchor)
     mountChildren(n2.children, container, fragmentEndAnchor)
   } else {
+
     patchChildren(n1, n2, container, fragmentEndAnchor)
   }
 }
@@ -139,7 +163,8 @@ const patchChildren = (n1, n2, container, anchor) => {
       unmountChildren(c1)
     }
     if (c1 !== c2) {
-      container.textContent = c2.textContent
+      container.textContent = c2
+      console.log(123);
     }
   } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     //* n2:ARRAY
@@ -217,7 +242,7 @@ const patchKeyedChildren = (c1, c2, container, anchor) => {
   } else {
     //*  4.采用传统 diff算法，但不真的添加和移动，只做 标记和删除
     const map = new Map()//*用 map 优化
-    //* c1的前后可能被截断
+    //* c1的前后都可能被截断
     for (let j = i; j <= e1; j++) {
       const prev = c2[k + i]
       map.set(prev.key, { prev, j })
@@ -416,6 +441,7 @@ const mountChildren = (children, container, anchor) => {
  * @param {*} container 
  */
 const patch = (n1, n2, container, anchor) => {
+
   if (n1 && !isSameVNode(n1, n2)) {
     // n2与n1类型不同
     //!重设anchor
@@ -427,7 +453,6 @@ const patch = (n1, n2, container, anchor) => {
   if (shapeFlag & ShapeFlags.COMPONENT) {
     processComponent(n1, n2, container, anchor)
   } else if (shapeFlag & ShapeFlags.TEXT) {
-
     processText(n1, n2, container, anchor)
   } else if (shapeFlag & ShapeFlags.FRAGMENT) {
     processFragment(n1, n2, container, anchor)
