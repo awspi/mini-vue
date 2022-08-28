@@ -44,3 +44,14 @@ export const hasChanged = (oldVal, val) => {
 export const isFunction = (target) => {
   return typeof target === 'function'
 }
+
+/**
+ * -转为驼峰
+ * @param {*} string 
+ * @returns 
+ */
+export const camelize = (str) => {
+  //hello-world
+  //hello-world-
+  return str.replace(/-\w/g, (_, c) => c ? c.toUpperCase() : '')
+}

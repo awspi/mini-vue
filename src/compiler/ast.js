@@ -1,4 +1,4 @@
-const NodeTypes = {
+export const NodeTypes = {
   ROOT: 'ROOT',
   ELEMENT: 'ELEMENT',
   TEXT: 'TEXT',
@@ -8,9 +8,14 @@ const NodeTypes = {
   DIRECTIVE: 'DIRECTIVE',
 };
 
-const ElementTypes = {
+export const ElementTypes = {
   ELEMENT: 'ELEMENT',
   COMPONENT: 'COMPONENT',
 };
 
-
+export const createRoot = (children) => {
+  return {
+    type: NodeTypes.ROOT,
+    children,
+  }
+}
