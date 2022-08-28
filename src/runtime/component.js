@@ -1,6 +1,7 @@
 import { reactive } from '../reactive/reactive'
 import { effect } from '../reactive/effect'
 import { normalizeVNode } from './vnode'
+import { queueJob } from './scheduler'
 
 const fallThrough = (instance, subTree) => {
   if (Object.keys(instance.attrs).length) {
@@ -74,10 +75,10 @@ export const mountComponent = (vnode, container, anchor, patch) => {
       const subTree = (instance.subTree = normalizeVNode(Component.render(instance.ctx)))
       fallThrough(instance, subTree)
       //todo BUG
-      console.log(prev);
+
       patch(prev, subTree, container, anchor)
       vnode.el = subTree.el
     }
-  })
-  instance.update()
+  }, { scheduler: queueJob })
+
 }

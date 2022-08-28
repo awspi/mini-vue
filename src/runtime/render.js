@@ -164,7 +164,6 @@ const patchChildren = (n1, n2, container, anchor) => {
     }
     if (c1 !== c2) {
       container.textContent = c2
-      console.log(123);
     }
   } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     //* n2:ARRAY
