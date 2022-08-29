@@ -1,4 +1,4 @@
-import { ShapeFlags } from "./vnode"
+import { ShapeFlags } from "../runtime/vnode"
 
 export const render = (vnode, container) => {
   mount(vnode, container)

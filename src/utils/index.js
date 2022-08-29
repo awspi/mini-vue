@@ -53,7 +53,7 @@ export const isFunction = (target) => {
 export const camelize = (str) => {
   //hello-world
   //hello-world-
-  return str.replace(/-\w/g, (_, c) => c ? c.toUpperCase() : '')
+  return str.replace(/-(\w)/g, (_, c) => (c ? c.toUpperCase() : ''));
 }
 
 /**
