@@ -10,6 +10,11 @@ export const createApp = (rootComponent) => {
       if (isString(rootContainer)) {
         rootContainer = document.querySelector(rootContainer)
       }
+      if (!rootComponent.render && !rootComponent.template) {
+        console.log('here');
+        rootComponent.template = rootContainer.innerHTML
+      }
+      rootContainer.innerHTML = ''//先清空 再渲染
       render(h(rootComponent), rootContainer)
     }
   }

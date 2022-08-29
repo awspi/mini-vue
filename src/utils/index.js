@@ -55,3 +55,12 @@ export const camelize = (str) => {
   //hello-world-
   return str.replace(/-\w/g, (_, c) => c ? c.toUpperCase() : '')
 }
+
+/**
+ * 大写首字母
+ * @param {*} str 
+ * @returns 
+ */
+export const capitalize = (str) => {
+  return str[0].toUpperCase() + str.slice(1)
+}

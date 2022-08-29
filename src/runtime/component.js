@@ -1,7 +1,8 @@
-import { reactive } from '../reactive/reactive'
-import { effect } from '../reactive/effect'
+import { reactive } from '../reactivity/reactive'
+import { effect } from '../reactivity/effect'
 import { normalizeVNode } from './vnode'
 import { queueJob } from './scheduler'
+import { compile } from '../compiler/compile'
 
 const fallThrough = (instance, subTree) => {
   if (Object.keys(instance.attrs).length) {
@@ -44,6 +45,18 @@ export const mountComponent = (vnode, container, anchor, patch) => {
   instance.ctx = {
     ...instance.props,
     ...instance.setupState
+  }
+  //* render
+  if (!Component.render && Component.template) {
+    let { template } = Component
+
+    if (template[0] === '#') {
+      const el = document.querySelector(template)
+      template = el ? el.innerHTML : ''
+    }
+    const code = compile(template)
+    Component.render = new Function('ctx', code)
+    console.log(Component.render)
   }
 
   //* update 直接使用effect 实现刷新
