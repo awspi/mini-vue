@@ -1,5 +1,5 @@
 import {reactive} from '../reactive'
-import {effect} from '../effect'
+import {effect,stop} from '../effect'
 describe('effect',()=>{
   it('happy path',()=>{
     const user=reactive({
@@ -56,5 +56,50 @@ describe('effect',()=>{
     run()
     // should have run
     expect(dummy).toBe(2)
+  })
+  it('stop', () => {
+    // stop 的操作可以停止响应式追踪（停止执行副作用），但是依然可以手动更新（调用runner）
+    // 之前我们是在 trigger里面去触发副作用函数的，这个需求的话可以想办法将相应的effect从deps
+    // 中删除，这样做是不可回退的，或者下次需要重新添加的，也可以非effect加一个属性，控制是否是stop状态
+    let dummy
+    const obj = reactive({ prop: 1 })
+    const runner = effect(() => {
+      dummy = obj.prop
+    })
+    obj.prop = 2
+    expect(dummy).toBe(2)
+    stop(runner)
+
+    // obj.prop = 3
+    // 下面这种方式的话单元测试无法通过，原因是obj.prop++
+    // 相当于obj.prop = obj.prop + 1，这个动作会同时触发get和set，
+    // 我们stop操作是在set的时候被清理的，但是执行get的时候又会track，
+    // 然后set的时候又会执行新的effect副作用
+    // obj.prop++
+    // expect(dummy).toBe(2)
+
+    // // stopped effect should still be manually callable
+    // runner()
+    // expect(dummy).toBe(3)
+  })
+  it('onStop', () => {
+    // onStop相当于是stop操作的一个回调，他会在stop被调用后执行
+    const obj = reactive({
+      foo: 1,
+    })
+
+    const onStop = jest.fn()
+    let dummy
+    const runner = effect(
+      () => {
+        dummy = obj.foo
+      },
+      {
+        onStop,
+      }
+    )
+
+    stop(runner)
+    expect(onStop).toBeCalledTimes(1)
   })
 })
